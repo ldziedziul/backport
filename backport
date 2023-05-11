@@ -1,0 +1,116 @@
+#!/bin/bash
+
+set -e
+
+function usage() {
+  echo "This tool backports the latest commit pointed by <source-ref> on the top of <target-branch> by crating a new branch."
+  echo "Then it pushes the newly created branch and creates a new PR."
+  echo
+  echo "Usage: "
+  echo "$(basename "$0") <source-ref> <target-branch> [-c | --continue] [-l | --local]"
+  echo
+  echo "Options:"
+  echo "  -l, --local    Skip pushing the branch and creating the PR"
+  echo "  -c, --continue Continue backporting after fixing cherry-pick conflict"
+  echo
+  echo "What does it do:"
+  echo "   '$(basename "$0") master upstream/5.2.z' - will perform the following actions:"
+  echo "    - create a new branch from upstream/5.2.z"
+  echo "    - cherry-pick the latest commit from master and append its message with ' [5.2.z]'"
+  echo "    - push the new branch to origin"
+  echo "    - create a PR from the new branch to 5.2.z branch and copies labels from the original PR (if found)"
+}
+
+if ! [ -x "$(command -v gh)" ]; then
+  echo "Error: 'gh' tool required"
+  exit 2
+fi
+
+if ! [ -x "$(command -v jq)" ]; then
+  echo "Error: 'jq' tool required"
+  exit 2
+fi
+
+if [[ $# -lt 2 || $# -gt 4 ]]; then
+  usage
+  exit 1
+fi
+
+get_opts() {
+  while [[ $# -gt 0 ]]; do
+    key="$1"
+    case $key in
+    -c | --continue)
+      CONTINUE=yes
+      shift
+      ;;
+    -l | --local)
+      LOCAL=yes
+      shift
+      ;;
+    -h | --help)
+      usage
+      exit
+      ;;
+    *)
+      shift
+      ;;
+    esac
+  done
+}
+
+# shellcheck disable=SC2048
+# shellcheck disable=SC2086
+get_opts $*
+
+SOURCE=$1
+TARGET=$2
+
+# SUFFIX can be 5.2.3, 5.1.z, etc
+SUFFIX="${TARGET##*/}"
+
+echo "Backporting the last commit from $SOURCE onto $TARGET"
+
+COMMIT_MSG=$(git show -s --format='%s' "$SOURCE")
+NEW_COMMIT_MSG="$COMMIT_MSG [$SUFFIX]"
+ORIGINAL_PR_NUMBER=$(echo "$COMMIT_MSG" | grep -Eo '#(\d+)' | tail -n1 | cut -c2-)
+REPO_ORIGIN="$(git remote get-url origin | cut -d: -f2 | cut -d. -f1)"
+REPO_ORIGIN_OWNER="$(git remote get-url origin | cut -d: -f2 | cut -d/ -f1)"
+REPO_UPSTREAM="$(git remote get-url upstream | cut -d: -f2 | cut -d. -f1)"
+
+if [ "$CONTINUE" = "yes" ]; then
+  git cherry-pick --continue
+else
+  BRANCH_NAME="backport-${SOURCE}-${SUFFIX}"
+  if [ -n "$ORIGINAL_PR_NUMBER" ]; then
+    BRANCH_NAME="backport-pr-${ORIGINAL_PR_NUMBER}-${SUFFIX}"
+  fi
+  git switch -c "$BRANCH_NAME" "$TARGET"
+  git cherry-pick "$SOURCE" || (echo "Fix conflict and continue with: $(basename "$0") $* --continue" && exit 1)
+fi
+
+git commit --amend -m "$NEW_COMMIT_MSG"
+
+if [ "$LOCAL" = "yes" ]; then
+  exit 0
+fi
+
+git push origin
+
+ORIGINAL_PR_URL="https://github.com/${REPO_UPSTREAM}/pull/${ORIGINAL_PR_NUMBER:-<pr-number>}"
+BASE_BRANCH="$SUFFIX"
+if [ -n "$ORIGINAL_PR_NUMBER" ]; then
+#  --reviewer flag doesn't work with --web
+#  REVIEWERS=$(gh api repos/$REPO_UPSTREAM/pulls/$ORIGINAL_PR_NUMBER/reviews | jq '.[] | select(.state == "APPROVED") | .user.login' | jq -c -r -s '. | unique | join(",")')
+#  if [ -n "$REVIEWERS" ]; then
+#    REVIEWERS_ARG="--reviewer $REVIEWERS"
+#  fi
+
+  LABELS=$(gh api repos/$REPO_UPSTREAM/pulls/$ORIGINAL_PR_NUMBER | jq '.labels[].name' | jq -c -r -s '. | join(",")')
+  if [ -n "$LABELS" ]; then
+    LABELS_ARG="--label $LABELS"
+  fi
+fi
+gh pr create --repo "$REPO_UPSTREAM" --base "$BASE_BRANCH" --head "${REPO_ORIGIN_OWNER}:$(git branch --show-current)" --title "$NEW_COMMIT_MSG" \
+  --body "Backport of $ORIGINAL_PR_URL$(echo -e "\n\n")$(\cat .github/pull_request_template.md 2>/dev/null)" \
+  --assignee "@me" $REVIEWERS_ARG $LABELS_ARG --web
