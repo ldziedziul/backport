@@ -18,7 +18,7 @@ function usage() {
   echo "    - create a new branch from upstream/5.2.z"
   echo "    - cherry-pick the latest commit from master and append its message with ' [5.2.z]'"
   echo "    - push the new branch to origin"
-  echo "    - create a PR from the new branch to 5.2.z branch and copies labels from the original PR (if found)"
+  echo "    - create a PR from the new branch to 5.2.z branch with body and labels from the original PR (if found)"
 }
 
 if ! [ -x "$(command -v gh)" ]; then
@@ -102,7 +102,6 @@ log_info "Backporting the last commit from $SOURCE onto $TARGET"
 COMMIT_MSG=$(git show -s --format='%s' "$SOURCE")
 NEW_COMMIT_MSG="$COMMIT_MSG [$SUFFIX]"
 ORIGINAL_PR_NUMBER=$(echo "$COMMIT_MSG" | grep -Eo '#(\d+)' | tail -n1 | cut -c2-)
-REPO_ORIGIN="$(git remote get-url origin | cut -d: -f2 | cut -d. -f1)"
 REPO_ORIGIN_OWNER="$(git remote get-url origin | cut -d: -f2 | cut -d/ -f1)"
 REPO_UPSTREAM="$(git remote get-url upstream | cut -d: -f2 | cut -d. -f1)"
 
@@ -131,12 +130,14 @@ git push origin
 
 ORIGINAL_PR_URL="https://github.com/${REPO_UPSTREAM}/pull/${ORIGINAL_PR_NUMBER:-<pr-number>}"
 BASE_BRANCH="$SUFFIX"
+PR_BODY=$(\cat .github/pull_request_template.md 2>/dev/null || true)
 if [ -n "$ORIGINAL_PR_NUMBER" ]; then
 #  --reviewer flag doesn't work with --web
 #  REVIEWERS=$(gh api repos/$REPO_UPSTREAM/pulls/$ORIGINAL_PR_NUMBER/reviews | jq '.[] | select(.state == "APPROVED") | .user.login' | jq -c -r -s '. | unique | join(",")')
 #  if [ -n "$REVIEWERS" ]; then
 #    REVIEWERS_ARG="--reviewer $REVIEWERS"
 #  fi
+  PR_BODY=$(gh api repos/$REPO_UPSTREAM/pulls/$ORIGINAL_PR_NUMBER | jq -r '"\n\n" + .body')
 
   LABELS=$(gh api repos/$REPO_UPSTREAM/pulls/$ORIGINAL_PR_NUMBER | jq '.labels[].name' | jq -c -r -s '. | join(",")')
   if [ -n "$LABELS" ]; then
@@ -145,5 +146,5 @@ if [ -n "$ORIGINAL_PR_NUMBER" ]; then
 fi
 log_info "Creating new PR..."
 gh pr create --repo "$REPO_UPSTREAM" --base "$BASE_BRANCH" --head "${REPO_ORIGIN_OWNER}:$(git branch --show-current)" --title "$NEW_COMMIT_MSG" \
-  --body "Backport of $ORIGINAL_PR_URL$(echo -e "\n\n")$(\cat .github/pull_request_template.md 2>/dev/null)" \
+  --body "Backport of $ORIGINAL_PR_URL$(echo -e "\n\n")$PR_BODY" \
   --assignee "@me" $REVIEWERS_ARG $LABELS_ARG --web

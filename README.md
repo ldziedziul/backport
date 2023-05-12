@@ -16,5 +16,5 @@ What does it do:
     - create a new branch from upstream/5.2.z
     - cherry-pick the latest commit from master and append its message with ' [5.2.z]'
     - push the new branch to origin
-    - create a PR from the new branch to 5.2.z branch and copies labels from the original PR (if found)
+    - create a PR from the new branch to 5.2.z branch with body and labels from the original PR (if found)
 ```
