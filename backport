@@ -105,6 +105,10 @@ ORIGINAL_PR_NUMBER=$(echo "$COMMIT_MSG" | grep -Eo '#(\d+)' | tail -n1 | cut -c2
 REPO_ORIGIN_OWNER="$(git remote get-url origin | cut -d: -f2 | cut -d/ -f1)"
 REPO_UPSTREAM="$(git remote get-url upstream | cut -d: -f2 | cut -d. -f1)"
 
+if [ -n "$ORIGINAL_PR_NUMBER" ]; then
+  log_info "The backported commit references PR #$ORIGINAL_PR_NUMBER"
+fi
+
 if [ "$CONTINUE" = "yes" ]; then
   git cherry-pick --continue
 else
