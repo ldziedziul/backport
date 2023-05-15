@@ -100,8 +100,8 @@ SUFFIX="${TARGET##*/}"
 log_info "Backporting the last commit from $SOURCE onto $TARGET"
 
 COMMIT_MSG=$(git show -s --format='%s' "$SOURCE")
-NEW_COMMIT_MSG="$COMMIT_MSG [$SUFFIX]"
 ORIGINAL_PR_NUMBER=$(echo "$COMMIT_MSG" | grep -Eo '#(\d+)' | tail -n1 | cut -c2-)
+NEW_COMMIT_MSG="${COMMIT_MSG// \(\#$ORIGINAL_PR_NUMBER\)} [$SUFFIX]"
 REPO_ORIGIN_OWNER="$(git remote get-url origin | cut -d: -f2 | cut -d/ -f1)"
 REPO_UPSTREAM="$(git remote get-url upstream | cut -d: -f2 | cut -d. -f1)"
 
