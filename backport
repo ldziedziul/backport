@@ -145,10 +145,10 @@ if [ -n "$ORIGINAL_PR_NUMBER" ]; then
 
   LABELS=$(gh api repos/$REPO_UPSTREAM/pulls/$ORIGINAL_PR_NUMBER | jq '.labels[].name' | jq -c -r -s '. | join(",")')
   if [ -n "$LABELS" ]; then
-    LABELS_ARG="--label $LABELS"
+    LABELS_ARG=(--label "$LABELS")
   fi
 fi
 log_info "Creating new PR..."
 gh pr create --repo "$REPO_UPSTREAM" --base "$BASE_BRANCH" --head "${REPO_ORIGIN_OWNER}:$(git branch --show-current)" --title "$NEW_COMMIT_MSG" \
   --body "Backport of $ORIGINAL_PR_URL$(echo -e "\n\n")$PR_BODY" \
-  --assignee "@me" $REVIEWERS_ARG $LABELS_ARG --web
+  --assignee "@me" $REVIEWERS_ARG "${LABELS_ARG[@]}" --web
