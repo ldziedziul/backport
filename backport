@@ -103,7 +103,12 @@ COMMIT_MSG=$(git show -s --format='%s' "$SOURCE")
 ORIGINAL_PR_NUMBER=$(echo "$COMMIT_MSG" | grep -Eo '#(\d+)' | tail -n1 | cut -c2-)
 NEW_COMMIT_MSG="$( echo "${COMMIT_MSG// \(\#$ORIGINAL_PR_NUMBER\)}" | sed -r 's/\[.+\]//g') [$SUFFIX]"
 REPO_ORIGIN_OWNER="$(git remote get-url origin | cut -d: -f2 | cut -d/ -f1)"
-REPO_UPSTREAM="$(git remote get-url upstream | cut -d: -f2 | cut -d. -f1)"
+UPSTREAM_URL="$(git remote get-url upstream)"
+if [[ $UPSTREAM_URL == http* ]]; then
+  REPO_UPSTREAM="$(echo $UPSTREAM_URL | awk -F'/' '{print $4"/"$5}' | cut -d. -f1)"
+else
+  REPO_UPSTREAM="$(echo $UPSTREAM_URL | cut -d: -f2 | cut -d. -f1)"
+fi
 
 if [ -n "$ORIGINAL_PR_NUMBER" ]; then
   log_info "The backported commit references PR #$ORIGINAL_PR_NUMBER"
