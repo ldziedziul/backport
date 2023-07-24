@@ -101,7 +101,7 @@ log_info "Backporting the last commit from $SOURCE onto $TARGET"
 
 COMMIT_MSG=$(git show -s --format='%s' "$SOURCE")
 ORIGINAL_PR_NUMBER=$(echo "$COMMIT_MSG" | grep -Eo '#(\d+)' | tail -n1 | cut -c2-)
-NEW_COMMIT_MSG="$( echo "${COMMIT_MSG// \(\#$ORIGINAL_PR_NUMBER\)}" | sed -r 's/\[.+\]//g') [$SUFFIX]"
+NEW_COMMIT_MSG="$( echo "${COMMIT_MSG// \(\#$ORIGINAL_PR_NUMBER\)}" | sed -r 's/ \[.+\]//g') [$SUFFIX]"
 REPO_ORIGIN_OWNER="$(git remote get-url origin | cut -d: -f2 | cut -d/ -f1)"
 UPSTREAM_URL="$(git remote get-url upstream)"
 if [[ $UPSTREAM_URL == http* ]]; then
@@ -116,6 +116,7 @@ fi
 
 if [ "$CONTINUE" = "yes" ]; then
   git cherry-pick --continue
+#echo "ignored"
 else
   BRANCH_NAME="backport-${SOURCE}-${SUFFIX}"
   if [ -n "$ORIGINAL_PR_NUMBER" ]; then
@@ -134,8 +135,8 @@ if [ "$LOCAL" = "yes" ]; then
   exit 0
 fi
 
-log_info "Pushing $BRANCH_NAME to origin"
-git push origin
+#log_info "Pushing $BRANCH_NAME to origin"
+#git push origin
 
 ORIGINAL_PR_URL="https://github.com/${REPO_UPSTREAM}/pull/${ORIGINAL_PR_NUMBER:-<pr-number>}"
 BASE_BRANCH="$SUFFIX"
@@ -154,6 +155,6 @@ if [ -n "$ORIGINAL_PR_NUMBER" ]; then
   fi
 fi
 log_info "Creating new PR..."
-gh pr create --repo "$REPO_UPSTREAM" --base "$BASE_BRANCH" --head "${REPO_ORIGIN_OWNER}:$(git branch --show-current)" --title "$NEW_COMMIT_MSG" \
+gh pr create --base "$BASE_BRANCH" --title "$NEW_COMMIT_MSG" \
   --body "Backport of $ORIGINAL_PR_URL$(echo -e "\n\n")$PR_BODY" \
   --assignee "@me" $REVIEWERS_ARG "${LABELS_ARG[@]}" --web
