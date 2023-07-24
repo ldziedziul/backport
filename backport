@@ -22,12 +22,12 @@ function usage() {
 }
 
 if ! [ -x "$(command -v gh)" ]; then
-  echo "Error: 'gh' tool required"
+  echo "Error: 'gh' tool required - https://cli.github.com/"
   exit 2
 fi
 
 if ! [ -x "$(command -v jq)" ]; then
-  echo "Error: 'jq' tool required"
+  echo "Error: 'jq' tool required - https://jqlang.github.io/jq/download/"
   exit 2
 fi
 
