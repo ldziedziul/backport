@@ -21,15 +21,15 @@ function usage() {
   echo "    - create a PR from the new branch to 5.2.z branch with body and labels from the original PR (if found)"
 }
 
-if ! [ -x "$(command -v gh)" ]; then
-  echo "Error: 'gh' tool required - https://cli.github.com/"
-  exit 2
-fi
+check_command() {
+  if ! [ -x "$(command -v "$1")" ]; then
+    echo "Error: '$1' tool required - $2"
+    exit 2
+  fi
+}
 
-if ! [ -x "$(command -v jq)" ]; then
-  echo "Error: 'jq' tool required - https://jqlang.github.io/jq/download/"
-  exit 2
-fi
+check_command "gh" "https://cli.github.com/"
+check_command "jq" "https://jqlang.github.io/jq/download/"
 
 if [[ $# -lt 2 || $# -gt 4 ]]; then
   usage
