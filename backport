@@ -157,4 +157,4 @@ fi
 log_info "Creating new PR..."
 gh pr create --base "$BASE_BRANCH" --title "$NEW_COMMIT_MSG" \
   --body "Backport of $ORIGINAL_PR_URL$(echo -e "\n\n")$PR_BODY" \
-  --assignee "@me" $REVIEWERS_ARG "${LABELS_ARG[@]}" --milestone "$SUFFIX" --web
+  --assignee "@me" $REVIEWERS_ARG "${LABELS_ARG[@]}" --milestone "$SUFFIX"
