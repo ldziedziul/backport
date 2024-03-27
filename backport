@@ -102,7 +102,6 @@ log_info "Backporting the last commit from $SOURCE onto $TARGET"
 COMMIT_MSG=$(git show -s --format='%s' "$SOURCE")
 ORIGINAL_PR_NUMBER=$(echo "$COMMIT_MSG" | grep -oP '#(\d+)' | tail -n1 | cut -c2-)
 NEW_COMMIT_MSG="$( echo "${COMMIT_MSG// \(\#$ORIGINAL_PR_NUMBER\)}" | sed -r 's/ \[.+\]//g') [$SUFFIX]"
-# REPO_ORIGIN_OWNER="$(git remote get-url origin | cut -d: -f2 | cut -d/ -f1)"
 UPSTREAM_URL="$(git remote get-url upstream)"
 if [[ $UPSTREAM_URL == http* ]]; then
   REPO_UPSTREAM="$(echo $UPSTREAM_URL | awk -F'/' '{print $4"/"$5}' | cut -d. -f1)"
